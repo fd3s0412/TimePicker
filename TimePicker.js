@@ -8,7 +8,7 @@ jQuery.fn.timePicker = function (callback) {
 
 jQuery.timePicker = function (container, callback) {
 	var $container = $(container).get(0);
-	return $container.timePicker || ($container.timePicker = new jQuery._timePicker($container, callback));
+	if ($container) new jQuery._timePicker($container, callback);
 };
 
 jQuery._timePicker = function ($container, callback) {
@@ -169,7 +169,7 @@ TimePicker.prototype.clickHour = function(value) {
 // ------------------------------------------------------------
 TimePicker.prototype.clickMinute = function(value) {
 	var target = this.$container.val() || "";
-	if (target.length > 3) {
+	if (target.length === 5) {
 		target = target.replace(/..$/, value);
 	} else {
 		target = "00:" + value;
