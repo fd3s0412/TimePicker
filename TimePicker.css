@@ -40,6 +40,7 @@
 }
 .time_picker > ul li.time_picker_header {
 	font-weight: bold;
+	cursor: default;
 }
 .time_picker > ul li.time_picker_active {
 	background-color: #1E90FF;

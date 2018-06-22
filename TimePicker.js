@@ -6,24 +6,23 @@ jQuery.fn.timePicker = function (callback) {
 	return this;
 };
 
-jQuery.timePicker = function (container, callback) {
-	var $container = $(container).get(0);
+jQuery.timePicker = function ($container, callback) {
 	if ($container) new jQuery._timePicker($container, callback);
 };
 
 jQuery._timePicker = function ($container, callback) {
-	$container = $($container);
+	$container.each(function() {
+		var $dom = $(this);
+		if ($dom.attr('type') !== "text") {
+			$dom = $dom.find('[type="text"]').first();
+		}
 
-	var settings = {};
-	settings.top = $container.offset().top + $container.outerHeight() + 2;
-	settings.left = $container.offset().left + 2;
-	settings.value = $container.val();
-	settings.readonly = "readonly";
+		var settings = {};
+		settings.readonly = "readonly";
 
-	new TimePicker(settings, $container);
-
+		new TimePicker(settings, $dom);
+	});
 	if (callback) callback();
-
 };
 // ------------------------------------------------------------
 // TimePicker.
@@ -40,7 +39,7 @@ function TimePicker (settings, $container) {
 		self.changeHourSub();
 	});
 	// 展開イベント設定
-	$container.click(function() {
+	this.$view.click(function() {
 		self.open();
 	});
 	// 時クリックイベント設定
@@ -56,16 +55,35 @@ function TimePicker (settings, $container) {
 // 初期処理.
 //------------------------------------------------------------
 TimePicker.prototype.init = function() {
+	var self = this;
+
 	this.$dom = this.createDom();
 	var $body = $('body');
 	$body.append(this.createOverlay());
 	$body.append(this.$dom);
 
-	// 位置設定
-	this.setPosition(this.settings);
-
 	// readonly
 	this.$container.attr("readonly", this.settings.readonly);
+
+	// hidden
+	this.$container.attr("type", "hidden");
+
+	// view
+	this.$view = $('<input type="text" />');
+	this.$view.attr("readonly", this.settings.readonly);
+	this.$view.addClass(this.$container.attr('class'));
+	this.$container.before(this.$view);
+	this.$container.change(function() {
+		self.updateView();
+	});
+	this.updateView();
+
+	// clear
+	this.$container.parent().find('[data-clear]').click(function() {
+		self.$container.val("");
+		self.updateView();
+		self.valueActivate();
+	});
 };
 // ------------------------------------------------------------
 // DOMを生成
@@ -135,6 +153,7 @@ TimePicker.prototype.createOverlay = function() {
 		<div class="time_picker_overlay"></div>
 	*/}).toString().match(/\/\*([^]*)\*\//)[1]);
 	this.$overlay = $overlay;
+	this.$overlay.hide();
 
 	// 閉じるイベント
 	this.$overlay.click(function() {
@@ -156,12 +175,12 @@ TimePicker.prototype.changeHourSub = function() {
 // ------------------------------------------------------------
 TimePicker.prototype.clickHour = function(value) {
 	var target = this.$container.val() || "";
-	if (target.length > 2) {
+	if (target.length >= 2) {
 		target = target.replace(/^../, value);
 	} else {
-		target = value + ":";
+		target = value + "00";
 	}
-	this.$container.val(target);
+	this.$container.val(target).change();
 	this.valueActivate();
 };
 // ------------------------------------------------------------
@@ -169,25 +188,32 @@ TimePicker.prototype.clickHour = function(value) {
 // ------------------------------------------------------------
 TimePicker.prototype.clickMinute = function(value) {
 	var target = this.$container.val() || "";
-	if (target.length === 5) {
+	if (target.length === 4) {
 		target = target.replace(/..$/, value);
+	} else if (target.length === 2) {
+		target = target + value;
 	} else {
-		target = "00:" + value;
+		target = "00" + value;
 	}
-	this.$container.val(target);
+	this.$container.val(target).change();
 	this.valueActivate();
 };
 // ------------------------------------------------------------
 // 表示設定
 // ------------------------------------------------------------
 TimePicker.prototype.setPosition = function(settings) {
-	this.$dom.css('top', settings.top + "px");
-	this.$dom.css('left', settings.left + "px");
+	var top = this.$view.offset().top + this.$view.outerHeight() + 2;
+	var left = this.$view.offset().left + 2;
+	this.$dom.css('top', top + "px");
+	this.$dom.css('left', left + "px");
 };
 //------------------------------------------------------------
 // 展開.
 //------------------------------------------------------------
 TimePicker.prototype.open = function() {
+	// 位置設定
+	this.setPosition();
+
 	this.$dom.show(100, "swing");
 	this.$overlay.show();
 	this.valueActivate();
@@ -204,18 +230,30 @@ TimePicker.prototype.close = function() {
 //------------------------------------------------------------
 TimePicker.prototype.valueActivate = function() {
 	var target = this.$container.val();
-	if (target.length >= 3) {
+	this.$dom.find('.time_picker_hour li').removeClass('time_picker_active');
+	if (target.length >= 2) {
 		var targetHour = target.substr(0, 2);
-		this.$dom.find('.time_picker_hour li').removeClass('time_picker_active');
 		this.$dom.find('.time_picker_hour li').filter(function() {
 			return $(this).text() === targetHour;
 		}).addClass('time_picker_active');
 	}
-	if (target.length === 5) {
-		var targetMinute = target.substr(3, 2);
-		this.$dom.find('.time_picker_minute li').removeClass('time_picker_active');
+	this.$dom.find('.time_picker_minute li').removeClass('time_picker_active');
+	if (target.length === 4) {
+		var targetMinute = target.substr(2, 2);
 		this.$dom.find('.time_picker_minute li').filter(function() {
 			return $(this).text() === targetMinute;
 		}).addClass('time_picker_active');
 	}
+};
+//------------------------------------------------------------
+// 表示を更新.
+//------------------------------------------------------------
+TimePicker.prototype.updateView = function() {
+	var value = this.$container.val();
+	if (value.length === 4) {
+		value = value.substr(0, 2) + ":" + value.substr(2, 2);
+	} else if (value.length === 2) {
+		value = value + ":";
+	}
+	this.$view.val(value);
 };
